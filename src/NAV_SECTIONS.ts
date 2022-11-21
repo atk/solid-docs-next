@@ -119,6 +119,10 @@ export const GUIDES_SECTIONS: SECTIONS = {
             name: "Linting",
             link: "/guides/how-to-guides/get-ready-for-solid/linting",
           },
+          {
+            name: "Testing",
+            link: "/guides/how-to-guides/get-ready-for-solid/testing",
+          },
         ],
       },
       {

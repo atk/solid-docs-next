@@ -1,0 +1,240 @@
+import { Aside } from '../../../../src/components/configurable/Aside'
+
+<Title>Testing</Title>
+
+In order to code fast, you need confidence that your code changes will not introduce unintended effects. The first line of defense against those issues is type checking and linting. The second line is unit testing.
+
+## Using a template
+
+If you are just starting your project, consider using one of our testing templates:
+
+- Classic Solid.js
+  - js-vitest
+  - ts-vitest
+  - ts-jest
+  - ts-uvu
+- Solid Start
+  - with-vitest
+
+These templates come preloaded with everything you need to unit test your application. 
+
+<Aside type="general">
+  If you are using one of the templates, then you can directly skip to the last section.
+</Aside>
+
+## Setting up a test runner
+
+If you want to setup testing yourself, the first thing you need to run unit tests on your Solid.js code is a test runner.
+
+#### Vitest
+
+Vitest is now the preferred method of unit testing Solid.js applications. We assume you already have vite installed an configured. If you come from `jest`, you will feel at home with a similar API, but instead of a `jest` global, `vitest` comes with `vi` for things like `vi.useFakeTimers()`.
+
+**Step 1:** Install `vitest` and `jsdom`
+
+```sh
+> npm install --save-dev vitest jsdom
+# or
+> yarn add --dev vitest jsdom
+```
+
+**Step 2:** update your `vite.config.ts` or `vite.config.js`
+
+```diff
+import solid from "solid-start/vite";
+-import { defineConfig } from "vite";
++import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [solid()],
++  test: {
++    deps: {
++      registerNodeLoader: true,
++    },
++    environment: "jsdom",
++    globals: true,
++    transformMode: { web: [/\.[jt]sx?$/] },
++  },
+});
+```
+
+Find further [configuration options](https://vitest.dev/config/) on the vitest page.
+
+* importing `defineConfig` from `vitest/config` instead of `vite` will add the types, so it is only necessary if you are using TypeScript
+* `registerNodeLoader: true` is required, because otherwise, `vitest` will use multiple modes of module resolution, which will result in Solid.js being loaded twice and thus break reactivity
+* `environment: "jsdom"` creates a jsdom environment for your tests - you do not need that if you want to test in ssr mode
+* `globals: true` exposes `describe`, `it`, `expect`, etc. as globals; use if you do not want to import them manually
+* `transformMode: { web: [/\.[jt]sx?$/] }` will run the web transforms on matching files. If instead you want to test ssr mode, use `transformMode: { ssr: [/\.[jt]sx?$/] }`
+
+**Step 3:** add `vitest` to your `package.json` scripts
+
+```diff
+{
+  "scripts": {
++    "test": "vitest",
+    "dev": "vite dev",
+    "start": "vite start",
+    "build": "vite build"
+  }
+}
+```
+
+Find additional [cli options](https://vitest.dev/guide/cli.html#options) on the vitest page.
+
+---
+
+<details class="mt-9 mb-14">
+<summary><h4 class="heading text-xl font-bold leading-9 mdx-heading inline-block">Jest</h4> \- Click to toggle visibility of this section.</summary>
+
+**Step 1:** Install `jest`, `jest-environment-jsdom` and `jsdom`
+
+```sh
+> npm install --save-dev jest jest-environment-jsdom jsdom solid-jest
+# or
+> yarn add --dev jest jest-environment-jsdom jsdom solid-jest
+```
+
+If you are using TypeScript, also install `@types/jest` and `@babel/preset-typescript`.
+
+```sh
+> npm install --save-dev @types/jest @babel/preset-typescript
+# or
+> yarn add --dev @types/jest @babel/preset-typescript
+```
+
+**Step 2:** Add configuration to `package.json`
+
+```diff
+{
++  "babel": {
++    "presets": ["env", "solid"]
+# or if you are using typescript:
++    "presets": ["env", "solid", "typescript"]
++  },
++  "jest": {
++    "preset": "solid-jest/preset/browser"
++  }
+}
+```
+
+While you could also use `ts-jest` instead, this will type check the tests before running them, which will slow the testing down considerably. Find more information in the article about [testing your Solid.js code with jest](https://dev.to/lexlohr/testing-your-solidjs-code-2gfh).
+
+Also, find more configuration options in the [jest documentation's configuration section](https://jestjs.io the jest types
+
+If you are using TypeScript, you may also want to add the jest types to `tsconfig.json`.
+
+
+```diff
+{
+-  "types": ["vite/client"]
++  "types": ["vite/client", "jest"]
+}
+```
+
+**Step 3:** Add `jest` to your `package.json` scripts
+
+```diff
+{
+  "scripts": {
++    "test": "jest",
+    "dev": "vite dev",
+    "start": "vite start",
+    "build": "vite build"
+  }
+}
+```
+
+Find additional [cli options](https://jestjs.io/docs/cli) on the jest page.
+
+</details>
+
+<details>
+<summary><h4 class="heading text-xl font-bold leading-9 mb-4 mdx-heading inline-block">Other test runners</h4> \- Click to toggle visibility of this section.</summary>
+
+These include
+
+- [uvu](https://github.com/lukeed/uvu): fastest, but lacks some features
+- [tape](https://github.com/ljharb/tape): fast, modular, extendable, many forks or extensions like supertape, tabe, tappedout
+- [ava](https://github.com/avajs/ava): still fast
+- [bron](https://github.com/webpro/bron): tiny, almost no features, fast
+- [karma](https://karma-runner.github.io/latest/index.html): a bit slower, but very mature, usually used together with [mocha](https://mochajs.org/), [chai](https://www.chaijs.com/) and/or [sinon](https://sinonjs.org/)
+- [test-turtle](https://github.com/lachrist/bercow) somewhat slower for a full test, but only runs tests that test files that failed or changed since the last run
+- [jasmine](https://jasmine.github.io/): somewhat full featured test system that jest is partially based on
+
+In order to get them to run solid browser code in node.js, you need a javascript DOM implementation, some transpiler hooked up into the module loader and optionally a way to alias certain file names if you do not want to use a `--conditions` cli argument for every test run.
+
+Luckily, we have a package that does exactly that. We assume that you already have some solid build chain inside your project that can be reused for testing.
+
+**Step 1:** Install `solid-register` and `jsdom`
+
+```sh
+> npm install --save-dev solid-register jsdom
+# or
+> yarn add --dev solid-register jsdom
+```
+
+**Step 2:** Add the `test` script to your `package.json`
+
+```diff
+{
+  "scripts": {
++    "test": "node -r solid-register uvu",
+    "dev": "vite dev",
+    "start": "vite start",
+    "build": "vite build"
+  }
+}
+```
+
+Find out more about the [optional configuration](https://github.com/atk/solid-register#configuration) on the github page of solid-register. By default, solid-register uses what you have installed.
+
+Replace `uvu` with the test runner of your choice, if you are using anything else.
+
+</details>
+
+## Setup additional packages
+
+You get the most confidence that your components work for the user when tested from a user's perspective. In order to do so, [Kent C. Dodds](https://kentcdodds.com/) created the [Testing Library project](https://testing-library.com/). To help you test your Solid.js components this way, we provide the [`@solidjs/testing-library` package](https://github.com/solidjs/solid-testing-library).
+
+**Step 1:** Install `@solidjs/testing-library` and optionally `@testing-library/jest-dom`
+
+```sh
+> npm install --save-dev @solidjs/testing-library
+# or
+> yarn add --dev @solidjs/testing-library
+```
+
+For `jest` and `vitest`, there is `@testing-library/jest-dom` that complements it. It will not work for other testing frameworks.
+
+```sh
+> npm install --save-dev @testing-library/jest-dom
+# or
+> yarn add --dev @testing-library/jest-dom
+```
+
+<Aside type="warning">The automatic unmount handling of `@solidjs/testing-library` will only work in `jest` and `vitest`. While you may use it to render your components inside a test container, you may need to unmount manually.</Aside>
+
+**Step 2:** Configure your test runner to use `@testing-library/jest-dom` if installed
+
+Either in your `jest` or `vitest` test configuration, use
+
+```diff
+{
+  "setupFiles": ["node_modules/@testing-library/jest-dom/extend-expect.js"]
+}
+```
+
+If you installed this and are using TypeScript, you should configure your tsconfig.json to support the extension:
+
+```diff
+-    "types": ["vite/client", "vitest"]
++    "types": ["vite/client", "vitest", "@testing-library/jest-dom"]
+```
+
+## Testing best practices
+
+> TODO: User-centric testing
+
+---
+
+If you find an issue with testing your Solid.js code, please join the `#testing` channel on our [Discord](https://discord.com/invite/solidjs).
